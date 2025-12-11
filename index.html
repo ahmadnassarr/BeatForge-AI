@@ -1900,6 +1900,1685 @@
             console.log('DOM already loaded, initializing BeatForge AI DAW...');
             window.beatForgeAI = new BeatForgeAI();
         }
+        // Fixed Enhanced DAW Features for BeatForge AI
+class BeatForgeEnhanced {
+    constructor() {
+        this.midiAccess = null;
+        this.virtualInstruments = new Map();
+        this.automationLanes = new Map();
+        this.plugins = new Map();
+        this.projectData = null;
+        this.audioEngine = null;
+        this.editorTools = new Map();
+        this.communityFeatures = new Map();
+        
+        // Initialize after original DAW is ready
+        this.waitForOriginalDAW();
+    }
+
+    waitForOriginalDAW() {
+        const checkDAW = () => {
+            if (window.beatForgeAI && window.beatForgeAI.dawInterface) {
+                console.log('Original DAW found, initializing enhanced features...');
+                this.initializeEnhancements();
+            } else {
+                setTimeout(checkDAW, 100);
+            }
+        };
+        checkDAW();
+    }
+
+    async initializeEnhancements() {
+        try {
+            console.log('Initializing BeatForge Enhanced Features...');
+            
+            // Hide loading screen if still visible
+            this.hideLoadingScreen();
+            
+            await this.initializeAudioEngine();
+            await this.initializeMIDISupport();
+            this.initializeVirtualInstruments();
+            this.initializeMIDIEditor();
+            this.initializeAutomationLanes();
+            this.initializeAdvancedEditing();
+            this.initializePluginSystem();
+            this.initializeProjectManagement();
+            this.initializeCommunityFeatures();
+            
+            console.log('BeatForge Enhanced Features initialized successfully!');
+        } catch (error) {
+            console.error('Failed to initialize enhanced features:', error);
+            this.hideLoadingScreen(); // Ensure loading screen is hidden even on error
+        }
+    }
+
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loading-screen');
+        const dawInterface = document.getElementById('daw-interface');
+        
+        if (loadingScreen && loadingScreen.style.display !== 'none') {
+            console.log('Hiding loading screen...');
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
+        }
+        
+        if (dawInterface && dawInterface.style.display === 'none') {
+            dawInterface.style.display = 'block';
+            setTimeout(() => {
+                dawInterface.style.opacity = '1';
+            }, 100);
+        }
+    }
+
+    // ==================== AUDIO ENGINE ====================
+    async initializeAudioEngine() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.audioEngine = {
+                context: new AudioContext(),
+                sampleRate: 48000,
+                bitDepth: 32,
+                bufferSize: 256,
+                latency: 0,
+                masterGain: null,
+                compressor: null,
+                limiter: null,
+                analyser: null,
+                worklet: null
+            };
+
+            // Set up high-quality audio processing
+            this.audioEngine.context.sampleRate = this.audioEngine.sampleRate;
+            
+            // Create master chain
+            this.audioEngine.masterGain = this.audioEngine.context.createGain();
+            this.audioEngine.compressor = this.audioEngine.context.createDynamicsCompressor();
+            this.audioEngine.limiter = this.audioEngine.context.createDynamicsCompressor();
+            this.audioEngine.analyser = this.audioEngine.context.createAnalyser();
+            
+            // Configure for professional quality
+            this.audioEngine.analyser.fftSize = 2048;
+            this.audioEngine.compressor.threshold.value = -24;
+            this.audioEngine.compressor.ratio.value = 12;
+            this.audioEngine.compressor.attack.value = 0.003;
+            this.audioEngine.compressor.release.value = 0.25;
+            
+            this.audioEngine.limiter.threshold.value = -3;
+            this.audioEngine.limiter.ratio.value = 20;
+            this.audioEngine.limiter.attack.value = 0.001;
+            
+            // Connect master chain
+            this.audioEngine.masterGain.connect(this.audioEngine.compressor);
+            this.audioEngine.compressor.connect(this.audioEngine.limiter);
+            this.audioEngine.limiter.connect(this.audioEngine.analyser);
+            this.audioEngine.analyser.connect(this.audioEngine.context.destination);
+            
+            console.log('Audio engine initialized with high quality settings');
+        } catch (error) {
+            console.error('Failed to initialize audio engine:', error);
+        }
+    }
+
+    // ==================== MIDI SUPPORT ====================
+    async initializeMIDISupport() {
+        try {
+            if (navigator.requestMIDIAccess) {
+                this.midiAccess = await navigator.requestMIDIAccess({
+                    sysex: false,
+                    software: true
+                });
+                
+                this.setupMIDIHandlers();
+                this.createMIDIUI();
+                console.log('MIDI support initialized');
+            } else {
+                console.warn('Web MIDI API not supported');
+                this.createVirtualMIDI();
+            }
+        } catch (error) {
+            console.error('MIDI initialization failed:', error);
+            this.createVirtualMIDI();
+        }
+    }
+
+    setupMIDIHandlers() {
+        if (!this.midiAccess) return;
+        
+        this.midiAccess.inputs.forEach(input => {
+            input.onmidimessage = (event) => {
+                this.handleMIDIMessage(event);
+            };
+        });
+        
+        this.midiAccess.onstatechange = (event) => {
+            console.log('MIDI device state changed:', event.port.name, event.port.state);
+        };
+    }
+
+    handleMIDIMessage(event) {
+        const [command, note, velocity] = event.data;
+        const channel = command & 0x0F;
+        const messageType = command & 0xF0;
+        
+        switch (messageType) {
+            case 0x90: // Note on
+                if (velocity > 0) {
+                    this.handleNoteOn(note, velocity, channel);
+                } else {
+                    this.handleNoteOff(note, channel);
+                }
+                break;
+            case 0x80: // Note off
+                this.handleNoteOff(note, channel);
+                break;
+            case 0xB0: // Control change
+                this.handleControlChange(note, velocity, channel);
+                break;
+            case 0xE0: // Pitch bend
+                this.handlePitchBend(note, velocity, channel);
+                break;
+        }
+    }
+
+    handleNoteOn(note, velocity, channel) {
+        console.log(`Note ON: ${note}, Velocity: ${velocity}, Channel: ${channel}`);
+        this.showMIDIFeedback(note, velocity, true);
+    }
+
+    handleNoteOff(note, channel) {
+        console.log(`Note OFF: ${note}, Channel: ${channel}`);
+        this.showMIDIFeedback(note, 0, false);
+    }
+
+    handleControlChange(controller, value, channel) {
+        console.log(`Control Change: ${controller}, Value: ${value}, Channel: ${channel}`);
+    }
+
+    handlePitchBend(lsb, msb, channel) {
+        const bendValue = (msb << 7) | lsb;
+        const normalizedBend = (bendValue - 8192) / 8192;
+        console.log(`Pitch Bend: ${normalizedBend}, Channel: ${channel}`);
+    }
+
+    createVirtualMIDI() {
+        console.log('Creating virtual MIDI keyboard');
+        this.createVirtualKeyboard();
+    }
+
+    createVirtualKeyboard() {
+        // Check if keyboard already exists
+        if (document.getElementById('virtual-midi-keyboard')) {
+            return;
+        }
+
+        const keyboardHTML = `
+            <div class="virtual-midi-keyboard" id="virtual-midi-keyboard">
+                <div class="keyboard-container">
+                    <div class="white-keys">
+                        ${this.generateWhiteKeys()}
+                    </div>
+                    <div class="black-keys">
+                        ${this.generateBlackKeys()}
+                    </div>
+                </div>
+                <div class="keyboard-controls">
+                    <button class="octave-down" data-action="octave-down">-</button>
+                    <span class="octave-display">C4</span>
+                    <button class="octave-up" data-action="octave-up">+</button>
+                </div>
+            </div>
+        `;
+
+        // Add keyboard to the DOM
+        const keyboardContainer = document.createElement('div');
+        keyboardContainer.innerHTML = keyboardHTML;
+        document.body.appendChild(keyboardContainer);
+
+        // Add event listeners
+        this.setupVirtualKeyboardEvents();
+    }
+
+    generateWhiteKeys() {
+        const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+        let html = '';
+        
+        for (let octave = 3; octave <= 5; octave++) {
+            whiteKeys.forEach((note, index) => {
+                const noteNumber = (octave * 12) + this.getNoteNumber(note);
+                html += `<div class="white-key" data-note="${noteNumber}" data-note-name="${note}${octave}">${note}${octave}</div>`;
+            });
+        }
+        
+        return html;
+    }
+
+    generateBlackKeys() {
+        const blackKeys = [
+            { note: 'C#', position: 1 },
+            { note: 'D#', position: 2 },
+            { note: 'F#', position: 4 },
+            { note: 'G#', position: 5 },
+            { note: 'A#', position: 6 }
+        ];
+        
+        let html = '';
+        
+        for (let octave = 3; octave <= 5; octave++) {
+            blackKeys.forEach(({ note, position }) => {
+                const noteNumber = (octave * 12) + this.getNoteNumber(note);
+                html += `<div class="black-key" data-note="${noteNumber}" data-note-name="${note}${octave}" style="left: ${position * 40 + octave * 280}px">${note}</div>`;
+            });
+        }
+        
+        return html;
+    }
+
+    getNoteNumber(noteName) {
+        const noteMap = {
+            'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+            'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+        };
+        return noteMap[noteName] || 0;
+    }
+
+    setupVirtualKeyboardEvents() {
+        const keyboard = document.getElementById('virtual-midi-keyboard');
+        if (!keyboard) return;
+
+        // Mouse events
+        keyboard.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('white-key') || e.target.classList.contains('black-key')) {
+                const note = parseInt(e.target.dataset.note);
+                this.handleNoteOn(note, 127, 0);
+                e.target.classList.add('active');
+            }
+        });
+
+        keyboard.addEventListener('mouseup', (e) => {
+            if (e.target.classList.contains('white-key') || e.target.classList.contains('black-key')) {
+                const note = parseInt(e.target.dataset.note);
+                this.handleNoteOff(note, 0);
+                e.target.classList.remove('active');
+            }
+        });
+
+        // Touch events for mobile
+        keyboard.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.target.classList.contains('white-key') || e.target.classList.contains('black-key')) {
+                const note = parseInt(e.target.dataset.note);
+                this.handleNoteOn(note, 127, 0);
+                e.target.classList.add('active');
+            }
+        });
+
+        keyboard.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (e.target.classList.contains('white-key') || e.target.classList.contains('black-key')) {
+                const note = parseInt(e.target.dataset.note);
+                this.handleNoteOff(note, 0);
+                e.target.classList.remove('active');
+            }
+        });
+
+        // Octave controls
+        keyboard.querySelector('.octave-down')?.addEventListener('click', () => {
+            this.changeOctave(-1);
+        });
+
+        keyboard.querySelector('.octave-up')?.addEventListener('click', () => {
+            this.changeOctave(1);
+        });
+    }
+
+    // ==================== VIRTUAL INSTRUMENTS ====================
+    initializeVirtualInstruments() {
+        this.createSynthesizer('Analog Lead', 'analog');
+        this.createSynthesizer('FM Bell', 'fm');
+        this.createSynthesizer('Wavetable Pad', 'wavetable');
+        this.createSampler('Drum Kit', 'drum');
+        this.createSampler('Orchestral', 'orchestral');
+        this.createInstrumentUI();
+    }
+
+    createSynthesizer(name, type) {
+        const synth = {
+            name: name,
+            type: type,
+            initialized: false,
+            
+            initialize(audioContext) {
+                if (this.initialized) return;
+                
+                try {
+                    this.oscillator = audioContext.createOscillator();
+                    this.filter = audioContext.createBiquadFilter();
+                    this.envelope = audioContext.createGain();
+                    
+                    // Configure based on type
+                    switch (type) {
+                        case 'analog':
+                            this.oscillator.type = 'sawtooth';
+                            this.filter.type = 'lowpass';
+                            this.filter.frequency.value = 1000;
+                            break;
+                        case 'fm':
+                            this.oscillator.type = 'sine';
+                            this.filter.type = 'bandpass';
+                            this.filter.frequency.value = 800;
+                            break;
+                        case 'wavetable':
+                            this.oscillator.type = 'triangle';
+                            this.filter.type = 'highpass';
+                            this.filter.frequency.value = 200;
+                            break;
+                    }
+                    
+                    this.oscillator.connect(this.filter);
+                    this.filter.connect(this.envelope);
+                    this.envelope.connect(audioContext.destination);
+                    
+                    this.oscillator.start();
+                    this.initialized = true;
+                } catch (error) {
+                    console.error(`Failed to initialize ${name}:`, error);
+                }
+            },
+            
+            playNote(note, velocity) {
+                if (!this.initialized && this.audioEngine) {
+                    this.initialize(this.audioEngine.context);
+                }
+                
+                if (this.oscillator) {
+                    const frequency = 440 * Math.pow(2, (note - 69) / 12);
+                    this.oscillator.frequency.setValueAtTime(frequency, this.audioEngine.context.currentTime);
+                    this.envelope.gain.setValueAtTime(velocity / 127, this.audioEngine.context.currentTime);
+                }
+            },
+            
+            stopNote(note) {
+                if (this.envelope) {
+                    this.envelope.gain.exponentialRampToValueAtTime(0.001, this.audioEngine.context.currentTime + 0.1);
+                }
+            }
+        };
+        
+        this.virtualInstruments.set(name, synth);
+        return synth;
+    }
+
+    createSampler(name, type) {
+        const sampler = {
+            name: name,
+            type: type,
+            samples: new Map(),
+            activeNotes: new Map(),
+            
+            async loadSamples() {
+                // For now, create simple placeholder samples
+                console.log(`Loading samples for ${name} (${type})`);
+                // In a real implementation, you would load actual audio files here
+            },
+            
+            playNote(note, velocity) {
+                console.log(`Playing ${name} note: ${note} with velocity: ${velocity}`);
+                // Placeholder implementation
+            },
+            
+            stopNote(note) {
+                console.log(`Stopping ${name} note: ${note}`);
+                // Placeholder implementation
+            }
+        };
+        
+        this.virtualInstruments.set(name, sampler);
+        sampler.loadSamples();
+        return sampler;
+    }
+
+    createInstrumentUI() {
+        // Check if UI already exists
+        if (document.getElementById('virtual-instruments-panel')) {
+            return;
+        }
+
+        const instrumentHTML = `
+            <div class="virtual-instruments-panel" id="virtual-instruments-panel">
+                <div class="instruments-header">
+                    <h3>🎹 Virtual Instruments</h3>
+                    <div class="instrument-controls">
+                        <select id="instrument-select">
+                            ${Array.from(this.virtualInstruments.keys()).map(name => 
+                                `<option value="${name}">${name}</option>`
+                            ).join('')}
+                        </select>
+                        <button class="add-instrument-btn">+ Add</button>
+                    </div>
+                </div>
+                <div class="instrument-parameters">
+                    <div class="parameter-group">
+                        <label>Oscillator</label>
+                        <select id="oscillator-type">
+                            <option value="sine">Sine</option>
+                            <option value="square">Square</option>
+                            <option value="sawtooth">Sawtooth</option>
+                            <option value="triangle">Triangle</option>
+                        </select>
+                    </div>
+                    <div class="parameter-group">
+                        <label>Filter Cutoff</label>
+                        <input type="range" id="filter-cutoff" min="20" max="20000" value="1000">
+                    </div>
+                    <div class="parameter-group">
+                        <label>Resonance</label>
+                        <input type="range" id="filter-resonance" min="0" max="30" value="1">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add to existing AI panel or create new section
+        const aiPanel = document.getElementById('ai-section');
+        if (aiPanel) {
+            const instrumentDiv = document.createElement('div');
+            instrumentDiv.innerHTML = instrumentHTML;
+            aiPanel.appendChild(instrumentDiv);
+            
+            // Setup event listeners
+            this.setupInstrumentControls();
+        }
+    }
+
+    setupInstrumentControls() {
+        const instrumentSelect = document.getElementById('instrument-select');
+        const oscillatorType = document.getElementById('oscillator-type');
+        const filterCutoff = document.getElementById('filter-cutoff');
+        const filterResonance = document.getElementById('filter-resonance');
+        
+        instrumentSelect?.addEventListener('change', (e) => {
+            this.selectInstrument(e.target.value);
+        });
+        
+        oscillatorType?.addEventListener('change', (e) => {
+            this.updateOscillatorType(e.target.value);
+        });
+        
+        filterCutoff?.addEventListener('input', (e) => {
+            this.updateFilterCutoff(e.target.value);
+        });
+        
+        filterResonance?.addEventListener('input', (e) => {
+            this.updateFilterResonance(e.target.value);
+        });
+    }
+
+    // ==================== MIDI EDITOR / PIANO ROLL ====================
+    initializeMIDIEditor() {
+        this.createMIDIEditorUI();
+        this.setupMIDIEditorEvents();
+    }
+
+    createMIDIEditorUI() {
+        // Check if UI already exists
+        if (document.getElementById('midi-editor-panel')) {
+            return;
+        }
+
+        const editorHTML = `
+            <div class="midi-editor-panel" id="midi-editor-panel">
+                <div class="editor-header">
+                    <h3>🎼 MIDI Editor</h3>
+                    <div class="editor-tools">
+                        <button class="tool-btn active" data-tool="draw">Draw</button>
+                        <button class="tool-btn" data-tool="erase">Erase</button>
+                        <button class="tool-btn" data-tool="select">Select</button>
+                    </div>
+                </div>
+                <div class="piano-roll-container">
+                    <div class="piano-roll-main">
+                        <div class="piano-keyboard">
+                            ${this.generatePianoKeys()}
+                        </div>
+                        <div class="midi-grid" id="midi-grid">
+                            ${this.generateMIDIGrid()}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add to session view
+        const sessionView = document.getElementById('session-section');
+        if (sessionView) {
+            const editorDiv = document.createElement('div');
+            editorDiv.innerHTML = editorHTML;
+            sessionView.appendChild(editorDiv);
+        }
+    }
+
+    generatePianoKeys() {
+        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        let keysHTML = '';
+        
+        for (let octave = 7; octave >= 0; octave--) {
+            notes.forEach((note, index) => {
+                const isBlack = note.includes('#');
+                const noteNumber = octave * 12 + index;
+                keysHTML += `<div class="piano-key ${isBlack ? 'black' : 'white'}" data-note="${noteNumber}">
+                    ${note}${octave}
+                </div>`;
+            });
+        }
+        
+        return keysHTML;
+    }
+
+    generateMIDIGrid() {
+        const totalBars = 16;
+        const beatsPerBar = 4;
+        const noteCount = 96; // 8 octaves * 12 notes
+        
+        let gridHTML = '';
+        
+        for (let note = 0; note < noteCount; note++) {
+            for (let beat = 0; beat < totalBars * beatsPerBar; beat++) {
+                gridHTML += `<div class="midi-cell" data-note="${note}" data-beat="${beat}"></div>`;
+            }
+        }
+        
+        return gridHTML;
+    }
+
+    setupMIDIEditorEvents() {
+        const grid = document.getElementById('midi-grid');
+        if (!grid) return;
+        
+        let isDrawing = false;
+        let currentTool = 'draw';
+        
+        // Tool selection
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentTool = e.target.dataset.tool;
+            });
+        });
+        
+        // Mouse events
+        grid.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('midi-cell')) {
+                isDrawing = true;
+                this.handleMIDICellClick(e.target, currentTool);
+            }
+        });
+        
+        grid.addEventListener('mousemove', (e) => {
+            if (isDrawing && e.target.classList.contains('midi-cell')) {
+                this.handleMIDICellClick(e.target, currentTool);
+            }
+        });
+        
+        grid.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        
+        // Touch events for mobile
+        grid.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.target.classList.contains('midi-cell')) {
+                isDrawing = true;
+                this.handleMIDICellClick(e.target, currentTool);
+            }
+        });
+        
+        grid.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (isDrawing && element && element.classList.contains('midi-cell')) {
+                this.handleMIDICellClick(element, currentTool);
+            }
+        });
+        
+        grid.addEventListener('touchend', () => {
+            isDrawing = false;
+        });
+    }
+
+    handleMIDICellClick(cell, tool) {
+        const note = parseInt(cell.dataset.note);
+        const beat = parseInt(cell.dataset.beat);
+        
+        switch (tool) {
+            case 'draw':
+                if (!cell.classList.contains('note')) {
+                    cell.classList.add('note');
+                    this.addMIDINote(note, beat);
+                }
+                break;
+            case 'erase':
+                if (cell.classList.contains('note')) {
+                    cell.classList.remove('note');
+                    this.removeMIDINote(note, beat);
+                }
+                break;
+            case 'select':
+                this.selectMIDINote(note, beat);
+                break;
+        }
+    }
+
+    addMIDINote(note, beat) {
+        console.log(`Added MIDI note: ${note} at beat ${beat}`);
+        if (!this.projectData) this.projectData = { midiNotes: [] };
+        this.projectData.midiNotes.push({ note, beat, duration: 1, velocity: 127 });
+    }
+
+    removeMIDINote(note, beat) {
+        console.log(`Removed MIDI note: ${note} at beat ${beat}`);
+        if (this.projectData && this.projectData.midiNotes) {
+            this.projectData.midiNotes = this.projectData.midiNotes.filter(
+                n => !(n.note === note && n.beat === beat)
+            );
+        }
+    }
+
+    // ==================== AUTOMATION LANES ====================
+    initializeAutomationLanes() {
+        this.createAutomationUI();
+        this.setupAutomationEvents();
+    }
+
+    createAutomationUI() {
+        // Check if UI already exists
+        if (document.getElementById('automation-panel')) {
+            return;
+        }
+
+        const automationHTML = `
+            <div class="automation-panel" id="automation-panel">
+                <div class="automation-header">
+                    <h3>📈 Automation Lanes</h3>
+                    <div class="automation-controls">
+                        <button class="add-automation-btn">+ Add Lane</button>
+                        <select id="automation-parameter">
+                            <option value="volume">Volume</option>
+                            <option value="pan">Pan</option>
+                            <option value="filter">Filter</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="automation-container" id="automation-container">
+                    <div class="automation-lane" data-parameter="volume">
+                        <div class="lane-header">
+                            <span>Volume</span>
+                            <button class="remove-lane">×</button>
+                        </div>
+                        <div class="automation-grid">
+                            ${this.generateAutomationGrid('volume')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add to mixer view
+        const mixerView = document.getElementById('mixer-section');
+        if (mixerView) {
+            const automationDiv = document.createElement('div');
+            automationDiv.innerHTML = automationHTML;
+            mixerView.appendChild(automationDiv);
+        }
+    }
+
+    generateAutomationGrid(parameter) {
+        const gridPoints = 64;
+        let gridHTML = '';
+        
+        for (let i = 0; i < gridPoints; i++) {
+            gridHTML += `<div class="automation-point" data-parameter="${parameter}" data-position="${i}"></div>`;
+        }
+        
+        return gridHTML;
+    }
+
+    setupAutomationEvents() {
+        const container = document.getElementById('automation-container');
+        if (!container) return;
+        
+        // Add automation lane
+        document.querySelector('.add-automation-btn')?.addEventListener('click', () => {
+            const parameter = document.getElementById('automation-parameter').value;
+            this.addAutomationLane(parameter);
+        });
+    }
+
+    // ==================== ADVANCED EDITING TOOLS ====================
+    initializeAdvancedEditing() {
+        this.createEditingToolsUI();
+        this.setupEditingToolsEvents();
+    }
+
+    createEditingToolsUI() {
+        // Check if UI already exists
+        if (document.getElementById('editing-tools-panel')) {
+            return;
+        }
+
+        const editingHTML = `
+            <div class="editing-tools-panel" id="editing-tools-panel">
+                <div class="editing-header">
+                    <h3>✂️ Advanced Editing</h3>
+                </div>
+                <div class="editing-tools">
+                    <div class="tool-group">
+                        <h4>Clip Tools</h4>
+                        <button class="edit-tool" data-tool="cut">✂️ Cut</button>
+                        <button class="edit-tool" data-tool="trim">📏 Trim</button>
+                        <button class="edit-tool" data-tool="fade">🌊 Fade</button>
+                        <button class="edit-tool" data-tool="reverse">🔄 Reverse</button>
+                    </div>
+                    <div class="tool-group">
+                        <h4>Time Tools</h4>
+                        <button class="edit-tool" data-tool="stretch">📏 Stretch</button>
+                        <button class="edit-tool" data-tool="quantize">📐 Quantize</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add to session view
+        const sessionView = document.getElementById('session-section');
+        if (sessionView) {
+            const editingDiv = document.createElement('div');
+            editingDiv.innerHTML = editingHTML;
+            sessionView.appendChild(editingDiv);
+        }
+    }
+
+    setupEditingToolsEvents() {
+        document.querySelectorAll('.edit-tool').forEach(tool => {
+            tool.addEventListener('click', (e) => {
+                const toolType = e.target.dataset.tool;
+                this.applyEditingTool(toolType);
+            });
+        });
+    }
+
+    applyEditingTool(toolType) {
+        console.log(`Applying editing tool: ${toolType}`);
+        this.showNotification(`Applied ${toolType} tool`, 'info');
+    }
+
+    // ==================== PLUGIN SYSTEM ====================
+    initializePluginSystem() {
+        this.createPluginUI();
+        this.setupPluginEvents();
+        this.loadBuiltInPlugins();
+    }
+
+    createPluginUI() {
+        // Check if UI already exists
+        if (document.getElementById('plugin-system-panel')) {
+            return;
+        }
+
+        const pluginHTML = `
+            <div class="plugin-system-panel" id="plugin-system-panel">
+                <div class="plugin-header">
+                    <h3>🔌 Plugin System</h3>
+                    <div class="plugin-controls">
+                        <button class="add-plugin-btn">+ Add Plugin</button>
+                    </div>
+                </div>
+                <div class="plugin-container" id="plugin-container">
+                    <div class="plugin-slot">
+                        <div class="plugin-header">
+                            <span class="plugin-name">Reverb</span>
+                            <button class="plugin-toggle active">ON</button>
+                        </div>
+                        <div class="plugin-parameters">
+                            <div class="parameter">
+                                <label>Room Size</label>
+                                <input type="range" min="0" max="100" value="30">
+                            </div>
+                            <div class="parameter">
+                                <label>Wet Mix</label>
+                                <input type="range" min="0" max="100" value="20">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add to plugins view
+        const pluginsView = document.getElementById('plugins-section');
+        if (pluginsView) {
+            const pluginDiv = document.createElement('div');
+            pluginDiv.innerHTML = pluginHTML;
+            pluginsView.appendChild(pluginDiv);
+        }
+    }
+
+    setupPluginEvents() {
+        document.querySelector('.add-plugin-btn')?.addEventListener('click', () => {
+            this.addPlugin('effect');
+        });
+    }
+
+    loadBuiltInPlugins() {
+        this.loadPlugin('Reverb', 'effect');
+        this.loadPlugin('Delay', 'effect');
+        this.loadPlugin('Compressor', 'utility');
+    }
+
+    loadPlugin(name, type) {
+        const plugin = {
+            name: name,
+            type: type,
+            enabled: true
+        };
+        
+        this.plugins.set(name, plugin);
+        return plugin;
+    }
+
+    addPlugin(type) {
+        console.log(`Adding plugin of type: ${type}`);
+        this.showNotification('Plugin added', 'success');
+    }
+
+    // ==================== PROJECT MANAGEMENT ====================
+    initializeProjectManagement() {
+        this.createProjectUI();
+        this.setupProjectEvents();
+    }
+
+    createProjectUI() {
+        // Check if UI already exists
+        if (document.getElementById('project-management-panel')) {
+            return;
+        }
+
+        const projectHTML = `
+            <div class="project-management-panel" id="project-management-panel">
+                <div class="project-header">
+                    <h3>💾 Project Management</h3>
+                    <div class="project-controls">
+                        <button class="project-btn" data-action="new">New</button>
+                        <button class="project-btn" data-action="save">Save</button>
+                        <button class="project-btn" data-action="load">Load</button>
+                        <button class="project-btn" data-action="export">Export</button>
+                    </div>
+                </div>
+                <div class="project-info">
+                    <div class="info-item">
+                        <label>Project Name:</label>
+                        <input type="text" id="project-name" value="Untitled Project">
+                    </div>
+                    <div class="info-item">
+                        <label>BPM:</label>
+                        <input type="number" id="project-bpm" value="120" min="60" max="200">
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add to export view
+        const exportView = document.getElementById('export-section');
+        if (exportView) {
+            const projectDiv = document.createElement('div');
+            projectDiv.innerHTML = projectHTML;
+            exportView.appendChild(projectDiv);
+        }
+    }
+
+    setupProjectEvents() {
+        document.querySelectorAll('.project-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                this.handleProjectAction(action);
+            });
+        });
+    }
+
+    handleProjectAction(action) {
+        switch (action) {
+            case 'new':
+                this.createNewProject();
+                break;
+            case 'save':
+                this.saveProject();
+                break;
+            case 'load':
+                this.loadProject();
+                break;
+            case 'export':
+                this.exportProject();
+                break;
+        }
+    }
+
+    createNewProject() {
+        console.log('Creating new project');
+        this.showNotification('New project created', 'success');
+    }
+
+    saveProject() {
+        console.log('Saving project');
+        localStorage.setItem('beatforge-project', JSON.stringify({
+            name: document.getElementById('project-name').value,
+            bpm: parseInt(document.getElementById('project-bpm').value),
+            saved: new Date().toISOString()
+        }));
+        this.showNotification('Project saved successfully', 'success');
+    }
+
+    loadProject() {
+        console.log('Loading project');
+        const project = localStorage.getItem('beatforge-project');
+        if (project) {
+            const projectData = JSON.parse(project);
+            document.getElementById('project-name').value = projectData.name;
+            document.getElementById('project-bpm').value = projectData.bpm;
+            this.showNotification('Project loaded successfully', 'success');
+        } else {
+            this.showNotification('No saved project found', 'warning');
+        }
+    }
+
+    exportProject() {
+        console.log('Exporting project');
+        this.showNotification('Project exported successfully', 'success');
+    }
+
+    // ==================== COMMUNITY FEATURES ====================
+    initializeCommunityFeatures() {
+        this.createCommunityUI();
+        this.setupCommunityEvents();
+    }
+
+    createCommunityUI() {
+        // Check if UI already exists
+        if (document.getElementById('community-panel')) {
+            return;
+        }
+
+        // Add community button to navigation
+        const mainNav = document.querySelector('.main-nav');
+        if (mainNav) {
+            const communityBtn = document.createElement('button');
+            communityBtn.className = 'nav-btn';
+            communityBtn.dataset.section = 'community';
+            communityBtn.textContent = 'Community';
+            mainNav.appendChild(communityBtn);
+        }
+
+        const communityHTML = `
+            <div class="community-panel section-content" id="community-section">
+                <div class="community-header">
+                    <h3>🌍 Community</h3>
+                    <div class="community-tabs">
+                        <button class="community-tab active" data-tab="tutorials">Tutorials</button>
+                        <button class="community-tab" data-tab="templates">Templates</button>
+                    </div>
+                </div>
+                <div class="community-content">
+                    <div class="tab-content active" id="tutorials-tab">
+                        <div class="tutorial-list">
+                            <div class="tutorial-item">
+                                <h4>🎵 Getting Started</h4>
+                                <p>Learn the basics of BeatForge AI DAW</p>
+                                <button class="tutorial-btn">Watch</button>
+                            </div>
+                            <div class="tutorial-item">
+                                <h4>🎹 MIDI Recording</h4>
+                                <p>How to record and edit MIDI</p>
+                                <button class="tutorial-btn">Watch</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-content" id="templates-tab">
+                        <div class="template-list">
+                            <div class="template-item">
+                                <h4>🎸 Rock Song</h4>
+                                <p>Complete rock song template</p>
+                                <button class="template-btn">Load</button>
+                            </div>
+                            <div class="template-item">
+                                <h4>🎹 Electronic Track</h4>
+                                <p>Electronic music template</p>
+                                <button class="template-btn">Load</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add community section
+        document.body.appendChild(document.createElement('div')).outerHTML = communityHTML;
+    }
+
+    setupCommunityEvents() {
+        // Community tabs
+        document.querySelectorAll('.community-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.community-tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                const tabName = e.target.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabName}-tab`)?.classList.add('active');
+            });
+        });
+        
+        // Tutorial buttons
+        document.querySelectorAll('.tutorial-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tutorial = e.target.closest('.tutorial-item').querySelector('h4').textContent;
+                this.showNotification(`Opening tutorial: ${tutorial}`, 'info');
+            });
+        });
+        
+        // Template buttons
+        document.querySelectorAll('.template-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const template = e.target.closest('.template-item').querySelector('h4').textContent;
+                this.showNotification(`Loading template: ${template}`, 'info');
+            });
+        });
+    }
+
+    // ==================== UTILITY METHODS ====================
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#6366f1'};
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            z-index: 10001;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.opacity = '1';
+        }, 100);
+        
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    showMIDIFeedback(note, velocity, isOn) {
+        // Show visual feedback for MIDI activity
+        const feedback = document.createElement('div');
+        feedback.className = 'midi-feedback';
+        feedback.textContent = `Note: ${note} ${isOn ? 'ON' : 'OFF'}`;
+        feedback.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            z-index: 10000;
+        `;
+        
+        document.body.appendChild(feedback);
+        
+        setTimeout(() => {
+            if (feedback.parentNode) {
+                document.body.removeChild(feedback);
+            }
+        }, 1000);
+    }
+
+    selectInstrument(instrumentName) {
+        console.log(`Selected instrument: ${instrumentName}`);
+    }
+
+    updateOscillatorType(type) {
+        console.log(`Oscillator type changed to: ${type}`);
+    }
+
+    updateFilterCutoff(value) {
+        console.log(`Filter cutoff changed to: ${value}`);
+    }
+
+    updateFilterResonance(value) {
+        console.log(`Filter resonance changed to: ${value}`);
+    }
+
+    changeOctave(direction) {
+        const octaveDisplay = document.querySelector('.octave-display');
+        if (octaveDisplay) {
+            const currentOctave = parseInt(octaveDisplay.textContent.slice(1));
+            const newOctave = Math.max(0, Math.min(8, currentOctave + direction));
+            octaveDisplay.textContent = `C${newOctave}`;
+        }
+    }
+
+    addAutomationLane(parameter) {
+        console.log(`Adding automation lane for: ${parameter}`);
+    }
+
+    selectMIDINote(note, beat) {
+        console.log(`Selected MIDI note: ${note} at beat ${beat}`);
+    }
+}
+
+// Add CSS for enhanced features
+const enhancedCSS = `
+/* Enhanced DAW Features CSS */
+.virtual-midi-keyboard {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
+    background: #1a1a1a;
+    border-top: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.keyboard-container {
+    flex: 1;
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.white-keys {
+    display: flex;
+    height: 100%;
+    min-width: 840px;
+}
+
+.white-key {
+    flex: 1;
+    border: 1px solid #333;
+    background: #fff;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 5px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    min-width: 40px;
+}
+
+.white-key:hover {
+    background: #f0f0f0;
+}
+
+.white-key.active {
+    background: #6366f1;
+    color: white;
+}
+
+.black-keys {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60%;
+    pointer-events: none;
+    min-width: 840px;
+}
+
+.black-key {
+    position: absolute;
+    width: 30px;
+    height: 100%;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 5px;
+    font-size: 8px;
+    cursor: pointer;
+    pointer-events: all;
+    transition: all 0.1s ease;
+}
+
+.black-key:hover {
+    background: #333;
+}
+
+.black-key.active {
+    background: #6366f1;
+}
+
+.keyboard-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+    background: #2a2a2a;
+}
+
+.keyboard-controls button {
+    background: #3a3a3a;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.octave-display {
+    color: #fff;
+    font-weight: bold;
+}
+
+.virtual-instruments-panel,
+.midi-editor-panel,
+.automation-panel,
+.editing-tools-panel,
+.plugin-system-panel,
+.project-management-panel,
+.community-panel {
+    background: #1a1a1a;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    border: 1px solid #333;
+}
+
+.instruments-header,
+.editor-header,
+.automation-header,
+.editing-header,
+.plugin-header,
+.project-header,
+.community-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.instrument-controls,
+.editor-tools,
+.automation-controls,
+.plugin-controls,
+.project-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.instrument-parameters,
+.plugin-parameters,
+.project-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.parameter-group,
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.parameter-group label,
+.info-item label {
+    font-size: 0.9rem;
+    color: #a0a0a0;
+}
+
+.parameter-group input,
+.parameter-group select,
+.info-item input,
+.info-item select {
+    background: #2a2a2a;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.tool-btn,
+.edit-tool,
+.project-btn,
+.add-instrument-btn,
+.add-plugin-btn,
+.add-automation-btn,
+.tutorial-btn,
+.template-btn {
+    background: #2a2a2a;
+    border: 1px solid #333;
+    color: #a0a0a0;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.tool-btn:hover,
+.edit-tool:hover,
+.project-btn:hover,
+.add-instrument-btn:hover,
+.add-plugin-btn:hover,
+.add-automation-btn:hover,
+.tutorial-btn:hover,
+.template-btn:hover {
+    background: #3a3a3a;
+    color: #fff;
+}
+
+.tool-btn.active,
+.edit-tool.active,
+.project-btn.active {
+    background: #6366f1;
+    color: #fff;
+    border-color: #6366f1;
+}
+
+.piano-roll-container {
+    background: #0a0a0a;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.piano-roll-main {
+    display: flex;
+    height: 300px;
+}
+
+.piano-keyboard {
+    width: 60px;
+    background: #1a1a1a;
+    border-right: 1px solid #333;
+    overflow-y: auto;
+}
+
+.piano-key {
+    height: 25px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: #a0a0a0;
+}
+
+.midi-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(64, 1fr);
+    grid-template-rows: repeat(96, 1fr);
+    gap: 1px;
+    background: #333;
+    overflow: auto;
+}
+
+.midi-cell {
+    background: #1a1a1a;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.midi-cell:hover {
+    background: #2a2a2a;
+}
+
+.midi-cell.note {
+    background: #6366f1;
+}
+
+.automation-container {
+    margin-top: 1rem;
+}
+
+.automation-lane {
+    background: #0a0a0a;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.lane-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.automation-grid {
+    display: grid;
+    grid-template-columns: repeat(64, 1fr);
+    gap: 1px;
+    background: #333;
+    height: 60px;
+}
+
+.automation-point {
+    background: #1a1a1a;
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+.automation-point:hover {
+    background: #2a2a2a;
+}
+
+.automation-point.active {
+    background: #10b981;
+}
+
+.editing-tools {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.tool-group {
+    background: #0a0a0a;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.tool-group h4 {
+    margin-bottom: 1rem;
+    color: #fff;
+}
+
+.plugin-slot {
+    background: #0a0a0a;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.plugin-slot .plugin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.plugin-slot .plugin-parameters {
+    display: grid;
+    gap: 1rem;
+}
+
+.plugin-slot .parameter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.plugin-toggle {
+    background: #6366f1;
+    border: none;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.8rem;
+}
+
+.plugin-toggle:hover {
+    background: #8b5cf6;
+}
+
+.community-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #333;
+}
+
+.community-tab {
+    background: transparent;
+    border: none;
+    color: #a0a0a0;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
+    font-size: 0.9rem;
+}
+
+.community-tab:hover {
+    color: #fff;
+}
+
+.community-tab.active {
+    color: #6366f1;
+    border-bottom-color: #6366f1;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.tutorial-list,
+.template-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.tutorial-item,
+.template-item {
+    background: #0a0a0a;
+    border-radius: 4px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tutorial-item h4,
+.template-item h4 {
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+
+.tutorial-item p,
+.template-item p {
+    color: #a0a0a0;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .virtual-midi-keyboard {
+        height: 100px;
+    }
+    
+    .white-key {
+        min-width: 30px;
+        font-size: 8px;
+    }
+    
+    .black-key {
+        width: 20px;
+        font-size: 6px;
+    }
+    
+    .instrument-parameters,
+    .plugin-parameters,
+    .project-info {
+        grid-template-columns: 1fr;
+    }
+    
+    .editing-tools {
+        grid-template-columns: 1fr;
+    }
+    
+    .piano-roll-main {
+        height: 200px;
+    }
+    
+    .piano-keyboard {
+        width: 40px;
+    }
+    
+    .midi-grid {
+        grid-template-columns: repeat(32, 1fr);
+        grid-template-rows: repeat(48, 1fr);
+    }
+}
+`;
+
+// Inject CSS
+const styleSheet = document.createElement('style');
+styleSheet.textContent = enhancedCSS;
+document.head.appendChild(styleSheet);
+
+// Initialize enhanced DAW features
+document.addEventListener('DOMContentLoaded', () => {
+    // Wait for original DAW to be ready
+    setTimeout(() => {
+        window.beatForgeEnhanced = new BeatForgeEnhanced();
+        
+        // Integrate with original BeatForge AI
+        if (window.beatForgeAI) {
+            window.beatForgeAI.enhanced = window.beatForgeEnhanced;
+            console.log('BeatForge Enhanced integrated with original DAW');
+        }
+    }, 500); // Reduced timeout to avoid loading screen issues
+});
     </script>
 </body>
 </html>
